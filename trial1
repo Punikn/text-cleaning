@@ -1,0 +1,59 @@
+import pandas as pd
+import re
+import numpy as np
+import calendar as cal
+
+doc = []
+with open('dates.txt') as file:
+    for line in file:
+        doc.append(line)
+
+df = pd.Series(doc)
+#print(df[495:500])
+r = list()
+m = list()
+r.append(re.compile(r'(?:\D|^)((?P<month>\d?\d?\d)[/-](?P<day>\d?\d)[-/](?P<year>\d{4}|\d{2}))(?:\D|$)'))
+r.append(re.compile(r'(?:\D|^)((?P<day>)(?P<month>\d?\d)[-/](?P<year>\d{4}))(?:\D|$)'))
+r.append(re.compile(r'((?P<month>Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*[., -]{1,2}(?P<day>\d?\d)(?:(?:th\B)|(?:st\B)|(?:nd\B)|(?:rd\B))?[., -]{1,2}(?P<year>\d{4}))',re.IGNORECASE))
+r.append(re.compile(r'((?P<day>/d?/d)[., -]{1,2}(?P<month>Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*[., -]{1,2}(?P<year>\d{4}))'))
+r.append(re.compile(r'((?P<day>)(?P<month>Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*[,. -](?P<year>\d{4}))'))
+r.append(re.compile(r'(?P<day>)(?P<month>)(?P<year>\d{4})'))
+df2 = pd.DataFrame(columns =["extracted_date","years","month","day"],index=df.index.copy())
+for i2 in range(len(r)):
+    for i in df2.index:
+        if  pd.isnull(df2["extracted_date"][i]):
+            m = re.search(r[i2],df[i])
+            if m :
+                df2["extracted_date"][i] = m.group(1)
+                df2["years"][i] = m.group('year')
+                try:
+                    df2["years"][i] = int(df2["years"][i])
+                    if df2["years"][i]<100:
+                        #print("early value:",df2["years"][i])
+                        df2["years"][i] += 1900
+                        #print("final value:",df2["years"][i])
+                except:
+                    print(f'Error found in {i} entry')
+                df2["month"][i] = m.group('month')
+                if df2["month"][i]:
+                    if df2["month"][i]in cal.month_abbr[1:]:
+                        #print("early value",df2["month"][i])
+                        df2["month"][i] = 1+(cal.month_abbr[1:].index(df2["month"][i]))
+                        #print("final value",df2["month"][i])
+                    else:
+                        df2["month"][i]= int(df2["month"][i])
+                else:
+                    df2["month"][i] = 1
+                df2["day"][i] = m.group('day')
+                if df2["day"][i]:
+                    df2["day"][i] = int(df2["day"][i])
+                else:
+                    df2["day"][i] = 1
+                #print(m.group(3),df2["extracted_date"][i])
+        else:
+            continue
+
+
+#df2.astype({"years":int32,"month":int32,"day"})
+df3=pd.Series(data = (df2.sort_values(by=["years","month","day"])).index,dtype = np.int32)
+df3.head()
